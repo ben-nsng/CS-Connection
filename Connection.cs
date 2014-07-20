@@ -8,6 +8,7 @@ public static class Connection
 {
 	#region var
 
+	private static String userAgent = "Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/32.0.1667.0 Safari/537.36";
 	private static String host = "";
 	private static String LastUri = "";
 	private static String Null = "0";
@@ -121,7 +122,7 @@ public static class Connection
 			request = (HttpWebRequest)WebRequest.Create(@url);
 			request.Accept = "*/*";
 			request.Headers.Add("Accept-Language", "zh-tw");
-			request.UserAgent = "Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; GTB6.5; .NET CLR 1.1.4322; .NET CLR 2.0.50727; InfoPath.2; .NET CLR 3.0.04506.648; .NET CLR 3.5.21022)";
+			request.UserAgent = userAgent;
 			request.Headers.Add("Accept-Encoding", "deflate");
 			if (proxy != "")
 				request.Proxy = new WebProxy(proxy);
@@ -211,7 +212,64 @@ public static class Connection
 		}
 	}
 
+	public static bool Download(string URI, string dest)
+	{
+		Stream rstm;
+		return Download(URI, dest, out rstm);
+	}
+
+	public static bool Download(string URI, out Stream rstm)
+	{
+		return Download(URI, null, out rstm);
+	}
+
+	private static bool Download(string URI, string dest, out Stream rstm)
+	{
+		HttpWebRequest request;
+		HttpWebResponse response;
+
+		request = (HttpWebRequest)WebRequest.Create(URI);
+		request.Accept = "*/*";
+		request.Headers.Add("Accept-Language", "zh-tw");
+		request.UserAgent = userAgent;
+		request.Headers.Add("Accept-Encoding", "deflate");
+
+		response = (HttpWebResponse)request.GetResponse();
+		if (response != null)
+		{
+			using (Stream stm = response.GetResponseStream())
+			{
+				if (dest == null)
+				{
+					CopyStream(stm, out rstm);
+					return true;
+				}
+
+				byte[] bytesInStream = new byte[8 * 1024];
+				int len;
+				using (Stream sw = File.OpenWrite(dest))
+				{
+					while ((len = stm.Read(bytesInStream, 0, (int)bytesInStream.Length)) > 0)
+						sw.Write(bytesInStream, 0, len);
+				}
+			}
+			response.Close();
+		}
+
+		rstm = Stream.Null;
+		return true;
+	}
+
 	#endregion
 
-
+	private static void CopyStream(Stream input, out Stream output)
+	{
+		output = Stream.Null;
+		byte[] buffer = new byte[32768];
+		int read;
+		while ((read = input.Read(buffer, 0, buffer.Length)) > 0)
+		{
+			output.Write(buffer, 0, read);
+		}
+	}
 }
